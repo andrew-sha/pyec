@@ -1,0 +1,7 @@
+pytest
+tabulate
+types-tabulate
+black
+isort
+pre-commit
+mypy

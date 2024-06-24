@@ -1,0 +1,91 @@
+import hashlib
+import time
+import typing as t
+from random import SystemRandom
+
+from pyec.curve import Curve, CurveElement, MontgomeryCurve, ShortWCurve
+from pyec.curve_params import CurveParams, get_curve_params
+from pyec.maths import Residue, modular_inverse
+from pyec.point import AffinePoint, Infinity, JacobianPoint
+
+
+class KeyPair:
+    pub_key: AffinePoint
+    priv_key: int
+
+    def __init__(self, pub_key: AffinePoint, priv_key: int) -> None:
+        self.pub_key = pub_key
+        self.priv_key = priv_key
+
+
+class Signature:
+    r: int
+    s: int
+
+    def __init__(self, r: int, s: int) -> None:
+        self.r = r
+        self.s = s
+
+    def __str__(self) -> str:
+        return f"Signature(r={hex(self.r)}, s={hex(self.s)})"
+
+
+class CurveSign:
+    """
+    Extends the base elliptic curve type to support the elliptic curve
+    digital signature algorithm (ECDSA)
+    """
+
+    params: CurveParams
+    curve: Curve
+    base_point: JacobianPoint
+
+    def __init__(self, curve_name: str) -> None:
+        self.params = get_curve_params(curve_name)
+        if self.params.type == "shortw":
+            self.curve = ShortWCurve(self.params.a, self.params.b, self.params.p)
+        elif self.params.type == "montgomery":
+            self.curve = MontgomeryCurve(self.params.a, self.params.b, self.params.p)
+        else:
+            raise ValueError("Unknown curve type.")
+        self.base_point = self.curve.create_point(self.params.g_x, self.params.g_y)
+
+    def _hash(self, m: str) -> int:
+        l = self.params.n.bit_length()
+        if l <= 256:
+            return int(hashlib.sha256(bytes(m, "utf-8")).hexdigest(), 16)
+        elif l <= 384:
+            return int(hashlib.sha384(bytes(m, "utf-8")).hexdigest(), 16)
+        else:
+            return int(hashlib.sha512(bytes(m, "utf-8")).hexdigest(), 16)
+
+    def generate_key_pair(self) -> KeyPair:
+        d = SystemRandom().randrange(1, self.params.n)
+        Q = self.curve.scalar_mult(self.base_point, d, to_affine=True)
+        return KeyPair(Q.to_affine(), d)
+
+    def sign(self, m: str, priv_key: int) -> Signature:
+        h = Residue(self._hash(m), self.params.n)
+        r, s = Residue(0, self.params.n), Residue(0, self.params.n)
+        while int(r) == 0:
+            k = SystemRandom().randrange(1, self.params.n)
+            P = self.curve.scalar_mult(self.base_point, k, to_affine=True)
+            r = Residue(int(P[0]), self.params.n)
+        while int(s) == 0:
+            s = (h + Residue(priv_key, self.params.n) * r) / Residue(k, self.params.n)
+        return Signature(r=int(r), s=int(s))
+
+    def verify(self, m: str, signature: Signature, pub_key: AffinePoint) -> bool:
+        h = Residue(self._hash(m), self.params.n)
+        if any(s <= 1 or s > self.params.n for s in (signature.r, signature.s)):
+            return False
+        c = Residue(modular_inverse(signature.s, self.params.n), self.params.n)
+        u, v = h * c, Residue(signature.r, self.params.n) * c
+        P = self.curve.add(
+            self.curve.scalar_mult(self.base_point, int(u)),
+            self.curve.scalar_mult(pub_key, int(v)),
+        )
+        if isinstance(P, Infinity):
+            return False
+        x = P[0] / (P[2] ** 2)
+        return int(x) % self.params.n == signature.r
