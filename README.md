@@ -108,15 +108,15 @@ The following table displays the average length of time in milliseconds this lib
 ```
 Curve              Key gen (ms)    Sign (ms)    Verify (ms)
 ---------------  --------------  -----------  -------------
-P-224                       5.9          6             12.4
-P-256                       7            7             14.3
-P-384                      11.6         11.7           24
-P-521                      18.5         18.6           38.6
-brainpoolP224r1             6.2          6.2           13.1
-brainpoolP256r1             7.3          7.4           15.2
-brainpoolP384r1            12.3         12.4           25.5
-brainpoolP512r1            19.5         19.6           39.8
-secp256k1                   7.4          7.5           15
+P-224                       2.6          2.8            5.2
+P-256                       3.4          3.4            6.7
+P-384                       6.4          6.6           12.7
+P-521                      11.8         12             23.9
+brainpoolP224r1             2.8          2.9            5.8
+brainpoolP256r1             3.5          3.7            7.2
+brainpoolP384r1             6.9          7             13.9
+brainpoolP512r1            12.7         13.4           25.6
+secp256k1                   3.3          3.4            6.6
 ```
 See the `pyec/benchmark.py` module to recreate these results locally. Note that results are formatted using `tabulate`, which is included as a dependency in `requirements.txt`. Be sure to install that before attempting to benchmark.
 ## Contributing
