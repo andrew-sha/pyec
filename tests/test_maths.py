@@ -2,47 +2,12 @@ import pytest
 
 from pyec.maths import (
     FiniteField,
-    Residue,
     extended_euclidean,
     miller_rabin,
     modular_inverse,
     to_binary,
     to_naf,
 )
-
-
-def test_residue_construction() -> None:
-    residue = Residue(3, 5)
-    assert residue
-    assert residue == Residue(8, 5)
-
-    with pytest.raises(ZeroDivisionError) as exc:
-        Residue(3, 0)
-    assert str(exc.value) == "integer division or modulo by zero"
-
-    assert Residue(-2, 5) == residue
-
-
-def test_residue_arithmetic() -> None:
-    residue_1 = Residue(3, 5)
-    residue_2 = Residue(2, 5)
-    residue_3 = Residue(2, 6)
-
-    assert residue_1 + residue_2 == Residue(0, 5)
-    assert residue_1 * residue_2 == Residue(1, 5)
-    assert residue_1 - residue_2 == Residue(1, 5)
-    assert residue_1 / residue_2 == Residue(4, 5)
-    assert residue_1**2 == Residue(4, 5)
-
-    with pytest.raises(ValueError, match="Residues must share the same modulus."):
-        residue_1 + residue_3
-        residue_1 * residue_3
-        residue_1 - residue_3
-        residue_1 / residue_3
-
-    with pytest.raises(ValueError) as exc:
-        Residue(1, 6) / residue_3
-    assert str(exc.value) == "2 has no multiplicative inverse modulo 6."
 
 
 def test_field_construction() -> None:
@@ -65,12 +30,11 @@ def test_field_container_properties() -> None:
     assert len(field)
     assert len(field) == 7
 
-    assert Residue(3, 7) in field
-    assert Residue(3, 8) not in field
+    assert 3 in field
+    assert 8 not in field
 
     for r in zip(field, range(len(field))):
-        assert r[0].a == r[1]
-        assert type(r[0]) == Residue
+        assert r[0] == r[1]
 
 
 def test_miller_rabin() -> None:

@@ -1,44 +1,41 @@
 import typing as t
 
-from pyec.maths import Residue
+from pyec.maths import miller_rabin, modular_inverse
 
 
 class AffinePoint:
     """
-    Represents an elliptic curve point in Affine coordinates: (x, y)
+    Represents an elliptic curve point in Affine coordinates: (x (mod m), y (mod m))
     """
 
-    def __init__(self, x: Residue, y: Residue) -> None:
+    def __init__(self, x: int, y: int, m: int) -> None:
         """
-        Initializes a point in Affine coordinates from two modular residues
+        Initializes a point in Affine coordinates from two integers
 
         Parameters:
-            x (Residue): The first coordinate of the point
-            y (Residue): The second coordinate of the point
+            x (int): The first coordinate of the point
+            y (int): The second coordinate of the point
+            m (int): The modulus of the coordinates
 
         Returns:
             None
-
-        Raises:
-            ValueError: If the two coordinates provided do not share a modulus
         """
-        if x.m != y.m:
-            raise ValueError("Coordinates must share the same modulus.")
-        self.x = x
-        self.y = y
-        self.m = x.m
+        self.x = x % m
+        self.y = y % m
+        self.m = m
 
     def __repr__(self) -> str:
         return f"({self.x}, {self.y})"
 
-    def __getitem__(self, index: int) -> Residue:
+    def __getitem__(self, index: int) -> int:
         """
         Enables 0-indexing of an Affine point
 
         Parameters:
-            index (int): Specifies which coordinate of the point to return, where
-            a value of 0 corresponds to the x coordinate and a value of 1 corresponds
-            to the y coordinate
+            index (int): Specifies which coordinate of the point to return
+
+        Returns:
+            int: The coordinate corresponding to the given index
 
         Raises:
             IndexError: If the given index is neither 0 or 1
@@ -76,7 +73,7 @@ class AffinePoint:
         return hash((self.x, self.y))
 
     def negate(self) -> "AffinePoint":
-        return self.__class__(self.x, -self.y)
+        return self.__class__(self.x, -self.y % self.m, self.m)
 
     def to_affine(self) -> "AffinePoint":
         return self
@@ -84,7 +81,7 @@ class AffinePoint:
     def to_jacobian(self) -> "JacobianPoint":
         """
         Converts this point to an equivalent point represented in Jacobian coordinates.
-        An Affine point (x, y) is equivalent to the Jacobian point (x, y, 1)
+        An Affine point (x, y) is equivalent to the Jacobian point (x, y, 1).
 
         Parameters:
             None
@@ -92,40 +89,36 @@ class AffinePoint:
         Returns:
             JacobianPoint: The point represented in Jacobian coordinates.
         """
-        return JacobianPoint(self.x, self.y, Residue(1, self.m))
+        return JacobianPoint(self.x, self.y, 1, self.m)
 
 
 class JacobianPoint:
     """
-    Represents an elliptic curve point in Jacobian coordinates: (x, y, z)
+    Represents an elliptic curve point in Jacobian coordinates: (x (mod m), y (mod m), z (mod m))
     """
 
-    def __init__(self, x: Residue, y: Residue, z: Residue) -> None:
+    def __init__(self, x: int, y: int, z: int, m: int) -> None:
         """
-        Initializes a point in Jacobian coordinates from three modular residues
+        Initializes a point in Jacobian coordinates from three integers
 
         Parameters:
-            x (Residue): The first coordinate of the point
-            y (Residue): The second coordinate of the point
-            z (Residue): The third coordinate of the point
+            x (int): The first coordinate of the point
+            y (int): The second coordinate of the point
+            z (int): The third coordinate of the point
+            m (int): The modulus of the coordinates
 
         Returns:
             None
-
-        Raises:
-            ValueError: If the three coordinates provided do not share a modulus
         """
-        if x.m != y.m or x.m != z.m or y.m != z.m:
-            raise ValueError("Coordinates must share the same modulus.")
-        self.x = x
-        self.y = y
-        self.z = z
-        self.m = x.m
+        self.x = x % m
+        self.y = y % m
+        self.z = z % m
+        self.m = m
 
     def __repr__(self) -> str:
         return f"({self.x}, {self.y}, {self.z})"
 
-    def __getitem__(self, index: int) -> Residue:
+    def __getitem__(self, index: int) -> int:
         """
         Enables 0-indexing of a Jacobian point
 
@@ -133,6 +126,9 @@ class JacobianPoint:
             index (int): Specifies which coordinate of the point to return, where
             a value of 0 corresponds to the x coordinate, a value of 1 corresponds
             to the y coordinate, and a value of 2 corresponds to the z coordinate
+
+        Returns:
+            int: The coordinate corresponding to the given index
 
         Raises:
             IndexError: If the given index is neither 0, 1, or 2
@@ -178,12 +174,12 @@ class JacobianPoint:
         return hash((self.x, self.y, self.z))
 
     def negate(self) -> "JacobianPoint":
-        return self.__class__(self.x, -self.y, self.z)
+        return self.__class__(self.x, -self.y % self.m, self.z, self.m)
 
     def to_affine(self) -> "AffinePoint":
         """
         Converts this point to an equivalent point represented in Affine coordinates.
-        A Jacobian point (x, y, z) is equivalent to the Jacobian point (x/z^2, y/z^3)
+        A Jacobian point (x, y, z) is equivalent to the Jacobian point (x/z^2, y/z^3).
 
         Parameters:
             None
@@ -191,8 +187,9 @@ class JacobianPoint:
         Returns:
             AffinePoint: The point represented in Affine coordinates
         """
-        z_inv = Residue(1, self.m) / self.z
-        return AffinePoint(self.x * (z_inv**2), self.y * (z_inv**3))
+        Zinv = modular_inverse(self.z, self.m)
+        Zinv2 = Zinv**2
+        return AffinePoint(self.x * Zinv2, self.y * (Zinv2 * Zinv), self.m)
 
     def to_jacobian(self) -> "JacobianPoint":
         return self

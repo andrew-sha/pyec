@@ -5,7 +5,7 @@ from random import SystemRandom
 
 from pyec.curve import Curve, CurveElement, MontgomeryCurve, ShortWCurve
 from pyec.curve_params import CurveParams, get_curve_params
-from pyec.maths import Residue, modular_inverse
+from pyec.maths import modular_inverse
 from pyec.point import AffinePoint, Infinity, JacobianPoint
 
 
@@ -65,27 +65,27 @@ class CurveSign:
         return KeyPair(Q.to_affine(), d)
 
     def sign(self, m: str, priv_key: int) -> Signature:
-        h = Residue(self._hash(m), self.params.n)
-        r, s = Residue(0, self.params.n), Residue(0, self.params.n)
+        h = self._hash(m)
+        r, s = 0, 0
         while int(r) == 0:
             k = SystemRandom().randrange(1, self.params.n)
             P = self.curve.scalar_mult(self.base_point, k, to_affine=True)
-            r = Residue(int(P[0]), self.params.n)
+            r = P[0]
         while int(s) == 0:
-            s = (h + Residue(priv_key, self.params.n) * r) / Residue(k, self.params.n)
+            s = ((h + priv_key * r) * modular_inverse(k, self.params.n)) % self.params.n
         return Signature(r=int(r), s=int(s))
 
     def verify(self, m: str, signature: Signature, pub_key: AffinePoint) -> bool:
-        h = Residue(self._hash(m), self.params.n)
+        h = self._hash(m)
         if any(s <= 1 or s > self.params.n for s in (signature.r, signature.s)):
             return False
-        c = Residue(modular_inverse(signature.s, self.params.n), self.params.n)
-        u, v = h * c, Residue(signature.r, self.params.n) * c
+        c = modular_inverse(signature.s, self.params.n)
+        u, v = (h * c) % self.params.n, (signature.r * c) % self.params.n
         P = self.curve.add(
-            self.curve.scalar_mult(self.base_point, int(u)),
-            self.curve.scalar_mult(pub_key, int(v)),
+            self.curve.scalar_mult(self.base_point, u),
+            self.curve.scalar_mult(pub_key, v),
         )
         if isinstance(P, Infinity):
             return False
-        x = P[0] / (P[2] ** 2)
-        return int(x) % self.params.n == signature.r
+        # x = P[0] / (P[2] ** 2)
+        return P.to_affine()[0] % self.params.n == signature.r
