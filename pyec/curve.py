@@ -1,7 +1,7 @@
 import typing as t
 from abc import ABC, abstractmethod
 
-from pyec.maths import FiniteField, Residue, to_binary, to_naf
+from pyec.maths import FiniteField, modular_inverse, to_binary, to_naf
 from pyec.point import AffinePoint, Infinity, JacobianPoint
 
 CurveElement = t.Union[AffinePoint, JacobianPoint, Infinity]
@@ -33,8 +33,8 @@ class Curve(ABC):
             ValueError: If the given parameters do not form a non-singular
             curve or a finite field
         """
-        self.a = Residue(a, p)
-        self.b = Residue(b, p)
+        self.a = a % p
+        self.b = b % p
         self.p = p
         self.base_field = FiniteField(p)
         self._validate_params()
@@ -197,8 +197,7 @@ class Curve(ABC):
         Raises:
             ValueError: If the given point (x, y) does not exist on the curve
         """
-        x_res, y_res = Residue(x, self.p), Residue(y, self.p)
-        point = AffinePoint(x_res, y_res)
+        point = AffinePoint(x, y, self.p)
         if not point in self:
             raise ValueError("The given point is not on the curve.")
         return point.to_jacobian()
@@ -221,12 +220,12 @@ class ShortWCurve(Curve):
         if isinstance(P, Infinity):
             return True
         P = P.to_affine()
-        return P[1] ** 2 == P[0] ** 3 + self.a * P[0] + self.b
+        return (P[1] ** 2) % self.p == (P[0] ** 3 + self.a * P[0] + self.b) % self.p
 
     @property
     def points(self) -> t.List[CurveElement]:
         points: t.Set[CurveElement] = set()
-        values: t.Dict[str, t.List[Residue]] = {
+        values: t.Dict[str, t.List[int]] = {
             "input": [],
             "lhs": [],
             "rhs": [],
@@ -239,7 +238,9 @@ class ShortWCurve(Curve):
             if val in values["lhs"]:
                 indices = [j for j, x in enumerate(values["lhs"]) if x == val]
                 for j in indices:
-                    points.add(AffinePoint(values["input"][i], values["input"][j]))
+                    points.add(
+                        AffinePoint(values["input"][i], values["input"][j], self.p)
+                    )
 
         points.add(self.infinity)
 
@@ -258,22 +259,24 @@ class ShortWCurve(Curve):
             if P == Q:
                 return self._double(P)
             else:
-                U, V = P[0] * Q[2] ** 2, Q[0] * P[2] ** 2
-                S, T = P[1] * Q[2] ** 3, Q[1] * P[2] ** 3
+                X_1, Y_1, Z_1 = P[0], P[1], P[2]
+                X_2, Y_2, Z_2 = Q[0], Q[1], Q[2]
+                U, V = (X_1 * Z_2**2) % self.p, (X_2 * Z_1**2) % self.p
+                S, T = (Y_1 * Z_2**3) % self.p, (Y_2 * Z_1**3) % self.p
                 if U == V:
                     if S == T:
                         return self._double(P)
                     return self.infinity
-                H = V - U
-                R = T - S
-                H2 = H**2
-                H3 = H2 * H
-                UH2 = U * H2
+                H = (V - U) % self.p
+                R = (T - S) % self.p
+                H2 = H**2 % self.p
+                H3 = (H2 * H) % self.p
+                UH2 = (U * H2) % self.p
 
-                x = R**2 - H3 - (Residue(2, self.p) * UH2)
-                y = R * (UH2 - x) - (S * H3)
-                z = H * P[2] * Q[2]
-                res = JacobianPoint(x, y, z)
+                x = (R**2 - H3 - (2 * UH2)) % self.p
+                y = (R * (UH2 - x) - (S * H3)) % self.p
+                z = (H * Z_1 * Z_2) % self.p
+                res = JacobianPoint(x, y, z, self.p)
 
                 return res if not to_affine else res.to_affine()
 
@@ -292,17 +295,19 @@ class ShortWCurve(Curve):
             return P
         elif int(P[1]) == 0:
             return self.infinity
-        Y2, Z2 = P[1] ** 2, P[2] ** 2
-        S = Residue(4, self.p) * P[0] * Y2
-        if int(self.a) == (-3 % self.p):
-            M = Residue(3, self.p) * (P[0] + Z2) * (P[0] - Z2)
+        X, Y, Z = P[0], P[1], P[2]
+        Y2, Z2 = Y**2, Z**2
+        S = (4 * X * Y2) % self.p
+        if self.a == self.p - 3:
+            M = (3 * (X + Z2) * (X - Z2)) % self.p
         else:
-            M = Residue(3, self.p) * P[0] ** 2 + self.a * Z2**2
-        T = M**2 - Residue(2, self.p) * S
+            M = (3 * X**2 + int(self.a) * Z2**2) % self.p
+        T = (M**2 - 2 * S) % self.p
         x = T
-        y = M * (S - T) - (Residue(8, self.p) * Y2**2)
-        z = Residue(2, self.p) * P[1] * P[2]
-        return JacobianPoint(x, y, z)
+        y = (M * (S - T) - (8 * Y2**2)) % self.p
+        z = (2 * Y * Z) % self.p
+
+        return JacobianPoint(x, y, z, self.p)
 
 
 class MontgomeryCurve(Curve):
@@ -312,7 +317,7 @@ class MontgomeryCurve(Curve):
     """
 
     def _validate_params(self) -> None:
-        if (self.a**2 == Residue(4, self.p)) or (self.b == Residue(0, self.p)):
+        if (self.a**2 % self.p == 4) or (self.b % self.p == 0):
             raise ValueError("Invalid curve parameters.")
 
     def __repr__(self) -> str:
@@ -322,12 +327,14 @@ class MontgomeryCurve(Curve):
         if isinstance(P, Infinity):
             return True
         P = P.to_affine()
-        return self.b * P[1] ** 2 == P[0] ** 3 + self.a * P[0] ** 2 + P[0]
+        return (self.b * P[1] ** 2) % self.p == (
+            P[0] ** 3 + self.a * P[0] ** 2 + P[0]
+        ) % self.p
 
     @property
     def points(self) -> t.List[CurveElement]:
         points: t.Set[CurveElement] = set()
-        values: t.Dict[str, t.List[Residue]] = {
+        values: t.Dict[str, t.List[int]] = {
             "input": [],
             "lhs": [],
             "rhs": [],
@@ -340,7 +347,9 @@ class MontgomeryCurve(Curve):
             if val in values["lhs"]:
                 indices = [j for j, x in enumerate(values["lhs"]) if x == val]
                 for j in indices:
-                    points.add(AffinePoint(values["input"][i], values["input"][j]))
+                    points.add(
+                        AffinePoint(values["input"][i], values["input"][j], self.p)
+                    )
 
         points.add(self.infinity)
 
@@ -360,15 +369,14 @@ class MontgomeryCurve(Curve):
         else:
             if P == Q:
                 l = (
-                    Residue(3, self.p) * P[0] ** 2
-                    + Residue(2, self.p) * self.a * P[0]
-                    + Residue(1, self.p)
-                ) / (Residue(2, self.p) * self.b * P[1])
+                    ((3 * P[0] ** 2) + (2 * self.a * P[0]) + 1)
+                    * modular_inverse(2 * self.b * P[1], self.p)
+                ) % self.p
             else:
-                l = (Q[1] - P[1]) / (Q[0] - P[0])
+                l = ((Q[1] - P[1]) * modular_inverse(Q[0] - P[0], self.p)) % self.p
 
-            x = self.b * l**2 - self.a - P[0] - Q[0]
-            y = l * (P[0] - x) - P[1]
-            res = AffinePoint(x, y)
+            x = (self.b * l**2 - self.a - P[0] - Q[0]) % self.p
+            y = (l * (P[0] - x) - P[1]) % self.p
+            res = AffinePoint(x, y, self.p)
 
             return res if to_affine else res.to_jacobian()

@@ -22,7 +22,7 @@ from pyec.point import AffinePoint
 from pyec.sign import CurveSign, Signature
 
 PRECISION: int = 4
-TRIALS: int = 100
+TRIALS: int = 10
 
 
 def benchmark_key_generation(signer: CurveSign, trials: int = TRIALS) -> float:

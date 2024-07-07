@@ -3,84 +3,6 @@ import random
 import typing as t
 
 
-class Residue:
-    """
-    Represents the modular residue a (mod m) and implements the
-    basic arithmetic operations and comparisons for this type.
-    """
-
-    def __init__(self, a: int, m: int) -> None:
-        """
-        Initializes a residue with the given value and modulus. The given
-        value will be automatically converted to a value between 0 and the
-        given modulus.
-
-        Parameters:
-            a (int): The value of the residue
-            m (int): The modulus of the residue
-
-        Returns:
-            None
-        """
-        self.a = a if (a < m and a >= 0) else a % m
-        self.m = m
-
-    def _compare_moduli(self, other: "Residue") -> None:
-        """
-        Verifies that a given residue can be compared/combined
-        with another one by checking that the two share a modulus.
-
-        Parameters:
-            other (Residue): The residue to compare with this one
-
-        Returns:
-            None
-
-        Raises:
-            ValueError: If the two residues do not share the same
-            modulus, i.e. if the two residues cannot be compared
-        """
-        if self.m != other.m:
-            raise ValueError("Residues must share the same modulus.")
-
-    def __repr__(self) -> str:
-        return str(self.a)
-
-    def __add__(self, other: "Residue") -> "Residue":
-        self._compare_moduli(other)
-        return Residue(self.a + other.a, self.m)
-
-    def __sub__(self, other: "Residue") -> "Residue":
-        self._compare_moduli(other)
-        return Residue(self.a - other.a, self.m)
-
-    def __mul__(self, other: "Residue") -> "Residue":
-        self._compare_moduli(other)
-        return Residue(self.a * other.a, self.m)
-
-    def __truediv__(self, other: "Residue") -> "Residue":
-        self._compare_moduli(other)
-        return self * Residue(modular_inverse(other.a, self.m), self.m)
-
-    def __pow__(self, n: int) -> "Residue":
-        return Residue(self.a**n, self.m)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, self.__class__):
-            raise TypeError(f"{other} is not a residue.")
-        self._compare_moduli(other)
-        return self.a == other.a
-
-    def __neg__(self) -> "Residue":
-        return Residue(-self.a, self.m)
-
-    def __hash__(self) -> int:
-        return hash((self.a, self.m))
-
-    def __int__(self) -> int:
-        return self.a
-
-
 class FiniteField:
     """
     Represents a finite field of odd, prime order
@@ -106,22 +28,22 @@ class FiniteField:
     def __repr__(self) -> str:
         return f"GF({self.p})"
 
-    def __contains__(self, res: Residue) -> bool:
+    def __contains__(self, res: int) -> bool:
         """
-        Checks whether a given residue is an element of the finite field.
+        Checks whether a given integer is an element of the finite field.
 
         Parameters:
-            res (Residue): The residue to check membership for
+            res (int): The integer to check membership for
 
         Returns:
-            bool: True if the residue is in the field, False if not.
+            bool: True if the integer is in the field, False if not.
         """
-        return res.m == self.p
+        return res >= 0 and res < self.p
 
     def __len__(self) -> int:
         return self.p
 
-    class FiniteFieldIterator(t.Iterator[Residue]):
+    class FiniteFieldIterator(t.Iterator[int]):
         """
         Implements the __iter__ and __next__ methods to enable
         in-order iteration through instances of FiniteField
@@ -131,14 +53,14 @@ class FiniteField:
             self.p = p
             self.current_value = 0
 
-        def __iter__(self) -> t.Iterator[Residue]:
+        def __iter__(self) -> t.Iterator[int]:
             return self
 
-        def __next__(self) -> "Residue":
+        def __next__(self) -> int:
             if self.current_value < self.p:
-                residue = Residue(self.current_value, self.p)
+                val = self.current_value
                 self.current_value += 1
-                return residue
+                return val
             else:
                 raise StopIteration
 

@@ -2,14 +2,13 @@ import pytest
 
 from pyec.curve import Curve, MontgomeryCurve, ShortWCurve
 from pyec.curve_params import get_curve_params
-from pyec.maths import Residue
 from pyec.point import AffinePoint
 
 
 def test_construction() -> None:
     curve = ShortWCurve(3, 8, 13)
-    assert curve.a == Residue(3, 13)
-    assert curve.b == Residue(8, 13)
+    assert curve.a == 3
+    assert curve.b == 8
     assert curve.p == 13
 
     with pytest.raises(ValueError) as exc:
@@ -23,8 +22,8 @@ def test_construction() -> None:
 
 def test_container_properties() -> None:
     curve = ShortWCurve(3, 8, 13)
-    assert AffinePoint(Residue(1, 13), Residue(5, 13)) in curve
-    assert AffinePoint(Residue(2, 13), Residue(5, 13)) not in curve
+    assert AffinePoint(1, 5, 13) in curve
+    assert AffinePoint(2, 5, 13) not in curve
     assert curve.infinity in curve
 
 
@@ -42,9 +41,7 @@ def test_addition() -> None:
     P = curve.create_point(1, 8)
     Q = curve.create_point(9, 7)
     infinity = curve.infinity
-    assert curve.add(P, Q, to_affine=True) == AffinePoint(
-        Residue(2, 13), Residue(10, 13)
-    )
+    assert curve.add(P, Q, to_affine=True) == AffinePoint(2, 10, 13)
     assert curve.add(P, infinity) == P
     assert curve.add(P, P.negate()) == infinity
     assert curve.add(infinity, infinity) == infinity
@@ -55,9 +52,7 @@ def test_scalar_mult() -> None:
     P = curve.create_point(6, 730)
     infinity = curve.infinity
 
-    assert curve.scalar_mult(P, 947, to_affine=True) == AffinePoint(
-        Residue(3492, 3623), Residue(60, 3623)
-    )
+    assert curve.scalar_mult(P, 947, to_affine=True) == AffinePoint(3492, 60, 3623)
     assert curve.scalar_mult(P, 1, to_affine=True) == P.to_affine()
     assert curve.scalar_mult(P, 0) == infinity
 

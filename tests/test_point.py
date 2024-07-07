@@ -1,46 +1,28 @@
 import pytest
 
-from pyec.maths import Residue
 from pyec.point import AffinePoint, Infinity, JacobianPoint
 
 
 def test_affine_point_construction() -> None:
-    m = 11
-    affine_point = AffinePoint(Residue(2, m), Residue(3, m))
-    jacobian_point = JacobianPoint(Residue(2, m), Residue(3, m), Residue(4, m))
+    affine_point = AffinePoint(2, 3, 11)
+    jacobian_point = JacobianPoint(2, 3, 4, 11)
     assert affine_point
     assert jacobian_point
-    assert int(affine_point.x) == 2
-    assert int(jacobian_point.z) == 4
+    assert affine_point.x == 2
+    assert jacobian_point.z == 4
 
-    assert affine_point[0] == jacobian_point[0]
-    assert affine_point[1] == jacobian_point[1]
-    assert jacobian_point[2]
-
-    with pytest.raises(ValueError) as exc:
-        AffinePoint(Residue(2, m), Residue(3, m + 1))
-    assert str(exc.value) == "Coordinates must share the same modulus."
-
-    with pytest.raises(ValueError) as exc:
-        JacobianPoint(Residue(2, m), Residue(3, m + 1), Residue(4, m))
-    assert str(exc.value) == "Coordinates must share the same modulus."
+    affine_point_too = AffinePoint(2, 14, 11)
+    jacobian_point_too = JacobianPoint(2, 14, 15, 11)
+    assert affine_point == affine_point_too
+    assert jacobian_point == jacobian_point_too
 
 
 def test_point_indexing() -> None:
-    m = 11
-    affine_point = AffinePoint(Residue(2, m), Residue(3, m))
-    jacobian_point = JacobianPoint(Residue(2, m), Residue(3, m), Residue(4, m))
-    assert (affine_point[0], affine_point[1]) == (Residue(2, m), Residue(3, m))
-    assert (jacobian_point[0], jacobian_point[1], jacobian_point[2]) == (
-        Residue(2, m),
-        Residue(3, m),
-        Residue(4, m),
-    )
-    assert affine_point[0] * affine_point[1] == Residue(6, m)
-    affine_point_too = AffinePoint(Residue(2, m), Residue(14, m))
-    jacobian_point_too = JacobianPoint(Residue(2, m), Residue(14, m), Residue(15, m))
-    assert affine_point == affine_point_too
-    assert jacobian_point == jacobian_point_too
+    affine_point = AffinePoint(2, 3, 11)
+    jacobian_point = JacobianPoint(2, 3, 4, 11)
+    assert (affine_point[0], affine_point[1]) == (2, 3)
+    assert (jacobian_point[0], jacobian_point[1], jacobian_point[2]) == (2, 3, 4)
+    assert affine_point[0] * affine_point[1] == 6
 
     with pytest.raises(IndexError) as exc:
         affine_point[2]
@@ -54,29 +36,25 @@ def test_point_indexing() -> None:
 
 
 def test_point_negation() -> None:
-    m = 11
-    affine_point = AffinePoint(Residue(2, m), Residue(3, m))
-    jacobian_point = JacobianPoint(Residue(2, m), Residue(3, m), Residue(4, m))
+    affine_point = AffinePoint(2, 3, 11)
+    jacobian_point = JacobianPoint(2, 3, 4, 11)
 
     assert not affine_point == affine_point.negate()
     assert not jacobian_point == jacobian_point.negate()
 
-    assert affine_point.negate()[1] == Residue(8, m)
-    assert jacobian_point.negate()[1] == Residue(8, m)
+    assert affine_point.negate()[1] == 8
+    assert jacobian_point.negate()[1] == 8
 
 
 def test_point_conversion() -> None:
-    m = 11
-    affine_point = AffinePoint(Residue(2, m), Residue(3, m))
-    jacobian_point = JacobianPoint(Residue(2, m), Residue(3, m), Residue(4, m))
+    affine_point = AffinePoint(2, 3, 11)
+    jacobian_point = JacobianPoint(2, 3, 4, 11)
 
     assert affine_point.to_affine()
     assert jacobian_point.to_jacobian()
 
-    assert affine_point.to_jacobian() == JacobianPoint(
-        Residue(2, m), Residue(3, m), Residue(1, m)
-    )
-    assert jacobian_point.to_affine() == AffinePoint(Residue(7, m), Residue(4, m))
+    assert affine_point.to_jacobian() == JacobianPoint(2, 3, 1, 11)
+    assert jacobian_point.to_affine() == AffinePoint(7, 4, 11)
 
 
 def test_infinity() -> None:
@@ -84,4 +62,4 @@ def test_infinity() -> None:
     assert inf
     assert inf.negate() == inf
 
-    assert not inf == AffinePoint(Residue(0, 11), Residue(0, 11))
+    assert not inf == AffinePoint(0, 0, 11)
