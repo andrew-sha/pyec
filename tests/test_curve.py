@@ -1,6 +1,6 @@
 import pytest
 
-from pyec.curve import Curve, MontgomeryCurve, ShortWCurve
+from pyec.curve import Curve, ShortWCurve
 from pyec.curve_params import get_curve_params
 from pyec.point import AffinePoint
 
@@ -52,8 +52,14 @@ def test_scalar_mult() -> None:
     P = curve.create_point(6, 730)
     infinity = curve.infinity
 
-    assert curve.scalar_mult(P, 947, to_affine=True) == AffinePoint(3492, 60, 3623)
-    assert curve.scalar_mult(P, 1, to_affine=True) == P.to_affine()
+    assert curve.scalar_mult(P, 947, 4, to_affine=True) == AffinePoint(3492, 60, 3623)
+    assert curve.scalar_mult(P, 1, 4, to_affine=True) == P.to_affine()
+
+    assert (
+        curve.scalar_mult(P, 3, 4, to_affine=True)
+        == curve.scalar_mult(P, 3).to_affine()
+    )
+
     assert curve.scalar_mult(P, 0) == infinity
 
     with pytest.raises(ValueError) as exc:

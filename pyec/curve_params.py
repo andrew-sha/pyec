@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from pyec.curve import Curve, MontgomeryCurve, ShortWCurve
+from pyec.curve import Curve, ShortWCurve
 
 CurveParams = namedtuple("CurveParams", ["p", "h", "n", "type", "a", "b", "g_x", "g_y"])
 
@@ -112,7 +112,7 @@ def get_curve_params(name: str) -> CurveParams:
             p: The prime defining the curve's base field
             h: The cofactor of the base point (h = |E| / n)
             n: The order of the base point
-            type: The form of the curve (either "shortw" or "montgomery")
+            type: The form of the curve
             a: The first coefficient of the curve equation
             b: The second coefficient of the curve equation
             g_x: The first coordinate of the base point

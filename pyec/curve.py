@@ -9,17 +9,15 @@ CurveElement = t.Union[AffinePoint, JacobianPoint, Infinity]
 
 class Curve(ABC):
     """
-    An interface for the elliptic curve type. This abstract
-    base class is subclassed by other classes in this module to
-    implement an elliptic curve defined according to a given form, such
-    as Weierstrass or Montgomery form.
-
+    An interface for the elliptic curve type. This abstract base class is intended
+    to subclassed by other classes in this module to implement an elliptic curve
+    defined according to a given form. Currently only (short) Weierstrass curves
+    are supported.
     """
 
     def __init__(self, a: int, b: int, p: int) -> None:
         """
-        Initializes an elliptic curve in either (short) Weierstrass form or
-        Montgomery form with the given parameters with coordinates in the field GF(p).
+        Initializes an elliptic curve with the given parameters with coordinates in the field GF(p).
 
         Parameters:
             a (int): The first coefficient of the curve equation
@@ -54,7 +52,6 @@ class Curve(ABC):
             ValueError: If for the given type of curve, the following conditions are met:
 
                 Weierstrass curve: 4a^3 + 27b^2 = 0
-                Montgomery curve: b(a^2 - 4) = 0
         """
         ...
 
@@ -130,32 +127,52 @@ class Curve(ABC):
 
     @t.overload
     def scalar_mult(
-        self, P: CurveElement, n: int, to_affine: t.Literal[True]
+        self,
+        P: CurveElement,
+        n: int,
+        w: int,
+        to_affine: t.Literal[True],
     ) -> AffinePoint:
         ...
 
     @t.overload
     def scalar_mult(
-        self, P: CurveElement, n: int, to_affine: t.Literal[False]
+        self,
+        P: CurveElement,
+        n: int,
+        w: int,
+        to_affine: t.Literal[False],
     ) -> JacobianPoint:
         ...
 
     @t.overload
     def scalar_mult(
-        self, P: CurveElement, n: int, to_affine: bool = False
-    ) -> CurveElement:
+        self,
+        P: CurveElement,
+        n: int,
+    ) -> AffinePoint:
+        ...
+
+    @t.overload
+    def scalar_mult(
+        self,
+        P: CurveElement,
+        n: int,
+        w: int,
+    ) -> AffinePoint:
         ...
 
     def scalar_mult(
-        self, P: CurveElement, n: int, to_affine: bool = False
+        self, P: CurveElement, n: int, w: int = 2, to_affine: bool = False
     ) -> CurveElement:
         """
         Computes a scalar multiple of the elliptic curve point P using the double-and-add
-        algorithm on the ternary non-adjacent form of the scalar.
+        algorithm on the w-ary non-adjacent form (wNAF) of the scalar.
 
         Parameters:
             P (CurveElement): The curve point to scale
             n (int): The integer to scale the curve point by
+            w (int): Determines the range of allowable non-zero values in the non-adjacent form
             to_affine (int): Determine the coordinate system in which to return
             the resulting point, defaults to Jacobian
 
@@ -169,18 +186,50 @@ class Curve(ABC):
             raise ValueError("Power must be non-negative.")
         if isinstance(P, Infinity):
             return P
-        bits = to_naf(n)
+        bits = to_naf(n, w)
         Q: CurveElement = P.to_jacobian()
         R: CurveElement = self.infinity
 
+        mults = {i: self._scalar_mult(P, i) for i in range(1, 2 ** (w - 1), 2)}
+
         for bit in reversed(bits):
+            R = self._double(R)
+            if bit > 0:
+                R = self.add(R, mults[bit])
+            elif bit < 0:
+                R = self.add(R, mults[bit * -1].negate())
+
+        return R if not to_affine else R.to_affine()
+
+    def _scalar_mult(self, P: CurveElement, n: int) -> CurveElement:
+        if n < 0:
+            raise ValueError("Power must be non-negative.")
+        if isinstance(P, Infinity):
+            return P
+        bits = to_naf(n)
+        Q: CurveElement = P.to_jacobian()
+        R: CurveElement = self.infinity
+        for bit in bits:
             if bit == 1:
                 R = self.add(R, Q)
             elif bit == -1:
                 R = self.add(R, Q.negate())
-            Q = self.add(Q, Q)
+            Q = self._double(Q)
 
-        return R if not to_affine else R.to_affine()
+        return R
+
+    @abstractmethod
+    def _double(self, P: CurveElement) -> CurveElement:
+        """
+        Doubles the elliptic curve point P.
+
+        Parameters:
+            P (Point): The point to double
+
+        Returns:
+            CurveElement: The point on the curve Q such that Q = 2P
+        """
+        ...
 
     def create_point(self, x: int, y: int) -> JacobianPoint:
         """
@@ -192,10 +241,10 @@ class Curve(ABC):
             y (int): The y coordinate of the curve to generate
 
         Returns:
-            JacobianPoint: A point on the curve in the Jacobian form (x, y, 1)
+            JacobianPoint: A point on the curve in Jacobian form (x, y, 1)
 
         Raises:
-            ValueError: If the given point (x, y) does not exist on the curve
+            ValueError: If the point (x, y) does not exist on the curve
         """
         point = AffinePoint(x, y, self.p)
         if not point in self:
@@ -281,19 +330,11 @@ class ShortWCurve(Curve):
                 return res if not to_affine else res.to_affine()
 
     def _double(self, P: CurveElement) -> CurveElement:
-        """
-        Doubles the elliptic curve point P which can be in either
-        Jacobian or Affine coordinates.
-
-        Parameters:
-            P (Point): The point to double
-
-        Returns:
-            CurveElement: The point on the curve Q such that Q = 2P
-        """
         if isinstance(P, Infinity):
             return P
-        elif int(P[1]) == 0:
+        elif isinstance(P, AffinePoint):
+            P = P.to_jacobian()
+        elif P[1] == 0:
             return self.infinity
         X, Y, Z = P[0], P[1], P[2]
         Y2, Z2 = Y**2, Z**2
@@ -308,75 +349,3 @@ class ShortWCurve(Curve):
         z = (2 * Y * Z) % self.p
 
         return JacobianPoint(x, y, z, self.p)
-
-
-class MontgomeryCurve(Curve):
-    """
-    Represents an elliptic curve in Montgomery form
-    given by the equation bY^2 = X^3 + aX^2 + X.
-    """
-
-    def _validate_params(self) -> None:
-        if (self.a**2 % self.p == 4) or (self.b % self.p == 0):
-            raise ValueError("Invalid curve parameters.")
-
-    def __repr__(self) -> str:
-        return f"MontgomeryCurve(a={self.a}, b={self.b}) over {self.base_field}"
-
-    def __contains__(self, P: CurveElement) -> bool:
-        if isinstance(P, Infinity):
-            return True
-        P = P.to_affine()
-        return (self.b * P[1] ** 2) % self.p == (
-            P[0] ** 3 + self.a * P[0] ** 2 + P[0]
-        ) % self.p
-
-    @property
-    def points(self) -> t.List[CurveElement]:
-        points: t.Set[CurveElement] = set()
-        values: t.Dict[str, t.List[int]] = {
-            "input": [],
-            "lhs": [],
-            "rhs": [],
-        }
-        for res in self.base_field:
-            values["input"].append(res)
-            values["lhs"].append(self.b * res**2)
-            values["rhs"].append(res**3 + self.a * res**2 + res)
-        for i, val in enumerate(values["rhs"]):
-            if val in values["lhs"]:
-                indices = [j for j, x in enumerate(values["lhs"]) if x == val]
-                for j in indices:
-                    points.add(
-                        AffinePoint(values["input"][i], values["input"][j], self.p)
-                    )
-
-        points.add(self.infinity)
-
-        return list(points)
-
-    def add(
-        self, P: CurveElement, Q: CurveElement, to_affine: bool = False
-    ) -> CurveElement:
-        if not (P in self and Q in self):
-            raise ValueError("Both points must be on the curve.")
-        elif isinstance(P, Infinity):
-            return Q
-        elif isinstance(Q, Infinity):
-            return P
-        elif P.negate() == Q:
-            return self.infinity
-        else:
-            if P == Q:
-                l = (
-                    ((3 * P[0] ** 2) + (2 * self.a * P[0]) + 1)
-                    * modular_inverse(2 * self.b * P[1], self.p)
-                ) % self.p
-            else:
-                l = ((Q[1] - P[1]) * modular_inverse(Q[0] - P[0], self.p)) % self.p
-
-            x = (self.b * l**2 - self.a - P[0] - Q[0]) % self.p
-            y = (l * (P[0] - x) - P[1]) % self.p
-            res = AffinePoint(x, y, self.p)
-
-            return res if to_affine else res.to_jacobian()

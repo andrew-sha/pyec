@@ -181,28 +181,34 @@ def to_binary(n: int) -> t.List[int]:
     return bits
 
 
-def to_naf(n: int) -> t.List[int]:
+def to_naf(n: int, w: int = 2) -> t.List[int]:
     """
-    Returns the ternary non-adjacent form representation of a given integer
+    Returns the w-ary non-adjacent representation of a given integer
 
     Parameters:
-        n (int): The integer to convert to ternary non-adjacent form
+        n (int): The integer to convert
+        w (int): Determines the range of allowable non-zero values in the non-adjacent form
 
     Returns:
-        List: A list containing only -1, 0 or 1 representing the
-        ternary non-adjacent form of the given integer with the most significant
-        bit on the left
+        List: A list of integers in the w-ary non-adjacent form with the least significant bit on the left
     """
     if not n:
         return [0]
+
+    def mods(a: int, b: int) -> int:
+        if (a % b) >= b // 2:
+            return (a % b) - b
+        else:
+            return a % b
+
     naf: t.List[int] = []
     while n:
         if n % 2:
-            z = 2 - (n % 4)
-            naf.insert(0, z)
+            z = mods(n, 2**w)
+            naf.append(z)
             n -= z
         else:
-            naf.insert(0, 0)
+            naf.append(0)
         n = n // 2
 
     return naf

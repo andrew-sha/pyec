@@ -3,7 +3,7 @@ import time
 import typing as t
 from random import SystemRandom
 
-from pyec.curve import Curve, CurveElement, MontgomeryCurve, ShortWCurve
+from pyec.curve import Curve, CurveElement, ShortWCurve
 from pyec.curve_params import CurveParams, get_curve_params
 from pyec.maths import modular_inverse
 from pyec.point import AffinePoint, Infinity, JacobianPoint
@@ -44,8 +44,6 @@ class CurveSign:
         self.params = get_curve_params(curve_name)
         if self.params.type == "shortw":
             self.curve = ShortWCurve(self.params.a, self.params.b, self.params.p)
-        elif self.params.type == "montgomery":
-            self.curve = MontgomeryCurve(self.params.a, self.params.b, self.params.p)
         else:
             raise ValueError("Unknown curve type.")
         self.base_point = self.curve.create_point(self.params.g_x, self.params.g_y)
@@ -61,7 +59,7 @@ class CurveSign:
 
     def generate_key_pair(self) -> KeyPair:
         d = SystemRandom().randrange(1, self.params.n)
-        Q = self.curve.scalar_mult(self.base_point, d, to_affine=True)
+        Q = self.curve.scalar_mult(self.base_point, d, 4, to_affine=True)
         return KeyPair(Q.to_affine(), d)
 
     def sign(self, m: str, priv_key: int) -> Signature:
@@ -69,23 +67,23 @@ class CurveSign:
         r, s = 0, 0
         while int(r) == 0:
             k = SystemRandom().randrange(1, self.params.n)
-            P = self.curve.scalar_mult(self.base_point, k, to_affine=True)
+            P = self.curve.scalar_mult(self.base_point, k, 4, to_affine=True)
             r = P[0]
         while int(s) == 0:
             s = ((h + priv_key * r) * modular_inverse(k, self.params.n)) % self.params.n
-        return Signature(r=int(r), s=int(s))
+        return Signature(r=r, s=s)
 
     def verify(self, m: str, signature: Signature, pub_key: AffinePoint) -> bool:
         h = self._hash(m)
-        if any(s <= 1 or s > self.params.n for s in (signature.r, signature.s)):
+        r, s = signature.r, signature.s
+        if r <= 1 or r > self.params.n or s <= 1 or s > self.params.n:
             return False
         c = modular_inverse(signature.s, self.params.n)
         u, v = (h * c) % self.params.n, (signature.r * c) % self.params.n
         P = self.curve.add(
-            self.curve.scalar_mult(self.base_point, u),
-            self.curve.scalar_mult(pub_key, v),
+            self.curve.scalar_mult(self.base_point, u, 4),
+            self.curve.scalar_mult(pub_key, v, 4),
         )
         if isinstance(P, Infinity):
             return False
-        # x = P[0] / (P[2] ** 2)
-        return P.to_affine()[0] % self.params.n == signature.r
+        return P.to_affine()[0] % self.params.n == r

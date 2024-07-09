@@ -4,7 +4,7 @@
 use this ECDSA in production**. In applications where security is critical, refer instead to an industry-grade cryptography library.
 
 ## Installation
-This library is currently not available as a PyPI wheel. To install, clone the repository:
+This library is currently not available on PyPI. To install, clone the repository:
 ```bash
 git clone https://github.com/andrew-sha/pyec.git
 cd pyec/
@@ -13,7 +13,7 @@ Once a copy of the repository exists locally, `pyec` can be imported within a Py
 ## Usage
 ### Elliptic curve arithmetic
 
- The first goal of this library is to provide an intuitive and fast Python interface for elliptic curve arithmetic. In particular, the `pyec.curve` module supports the creation of elliptic curves with arbitrary parameters (in Weierstrass or Montgomery form), and addition and scalar multiplication of points on these curves:
+ The first goal of this library is to provide an intuitive and fast Python interface for elliptic curve arithmetic. In particular, the `pyec.curve` module supports the creation of elliptic curves with arbitrary parameters (in short Weierstrass form), and addition and scalar multiplication of points on these curves:
 ```python
 from pyec.curve import ShortWCurve
 
@@ -33,20 +33,19 @@ scaled = curve.scalar_mult(point1, 5)
 added.to_affine()
 scaled.to_affine()
 ```
-Attempts to instantiate curves with 0 discriminant or curves over fields of non odd, prime order will yield errors. Attempts to generate a point which does not exist on a curve will likewise fail.
+Attempts to instantiate curves with discriminant 0 or curves over fields of non odd, prime order will yield errors. Attempts to generate a point which does not exist on a curve will likewise fail.
 ```python
-from pyec.curve import MontgomeryCurve
+from pyec.curve import ShortWCurve
 
-# Will yield ValueError as Montgomery curves require a^2 != 4
-curve = MontgomeryCurve(2, 3, 13)
+# Raises ValueError as 4 * 2^3 + 27 * 2^2 = 0 (mod 5)
+curve = ShortWCurve(2, 2, 5)
 
-# Will yield ValueError as 12 is not an odd prime
-curve = MontgomeryCurve(3, 8, 12)
+# Raises ValueError as 12 is not an odd prime
+curve = ShortWCurve(3, 8, 12)
 
-# Will yield ValueError since (1, 2) does not satisfy 3y^2 = x^3 + x (mod 13)
-curve = MontgomeryCurve(0, 3, 13)
+# Raises ValueError since (1, 2) does not satisfy y^2 = x^3 + 2x + 4 (mod 5)
+curve = ShortWCurve(2, 4, 5)
 curve.create_point(1, 2)
-
 ```
 The curve's infinity point is represented using the `Infinity` type, and can be directly accessed via the curve instance:
 ```python
@@ -60,7 +59,7 @@ inf = curve.infinity
 # Returns '(9, 6)' and 'Infinity'
 curve.add(curve.create_point(9, 6), inf, to_affine=True)
 curve.scalar_mult(inf, 8)
-````
+```
 `pyec` can represent elliptic curve points in either Jacobian or Affine coordinates via the `JacobianPoint` or `AffinePoint` types respectively. For performance reasons, points are by default represented using Jacobian coordinates when created and during arithmetic. Passing the `to_affine=True` flag to the arithmetic methods will override this behavior (as demonstrated above), or points can be converted in the following way:
 ```python
 from pyec.curve import ShortWCurve
@@ -68,10 +67,10 @@ from pyec.curve import ShortWCurve
 curve = ShortWCurve(3, 8, 13)
 point = curve.scalar_mult(curve.create_point(1, 8), 3)
 
-# Will return the Jacobian form of the point '(3, 7, 10)'
+# Returns the Jacobian form of the point '(3, 7, 10)'
 point1
 
-# Will return the Affine form of the point '(9, 6)'
+# Returns the Affine form of the point '(9, 6)'
 point1.to_affine()
 ```
 
@@ -96,29 +95,28 @@ signature = signer.sign(message, key_pair.priv_key)
 # Verify signature using public key
 assert signer.verify(message, signature, key_pair.pub_key)
 
-# Will yield a KeyError
+# Raises KeyError
 signer = CurveSign("uncrackableCurve")
 ```
 To add a new curve, add a new key-value pair to `REGISTRY` in the `curve_params.py` file locally, or see below for contributing.
 
 ## Performance
-`pyec` leverages several optimizations in order to speed up curve arithmetic. In particular, scalar multiplication is computed via the double-and-add algorithm on the ternary non-adjacent form of the scalar so as to reduce the number of additions needed in computing the product. In turn, additions are computed on the Jacobian coordinate representation of a point, reducing the number of modular inversions needed.
+`pyec` leverages several optimizations in order to speed up curve arithmetic. In particular, scalar multiplication is computed via the double-and-add algorithm on the w-ary non-adjacent form of the scalar so as to reduce the number of additions needed in computing the product. In turn, additions are computed on the Jacobian coordinate representation of a point, reducing the number of modular inversions needed.
 
 The following table displays the average length of time in milliseconds this library takes to generate key pairs, signatures, and verifications for each of the supported curves. Times are calculated as averages of 100 iterations of each operation on an Apple M3 Max.
-```
-Curve              Key gen (ms)    Sign (ms)    Verify (ms)
----------------  --------------  -----------  -------------
-P-224                       2.6          2.8            5.2
-P-256                       3.4          3.4            6.7
-P-384                       6.4          6.6           12.7
-P-521                      11.8         12             23.9
-brainpoolP224r1             2.8          2.9            5.8
-brainpoolP256r1             3.5          3.7            7.2
-brainpoolP384r1             6.9          7             13.9
-brainpoolP512r1            12.7         13.4           25.6
-secp256k1                   3.3          3.4            6.6
-```
-See the `pyec/benchmark.py` module to recreate these results locally. Note that results are formatted using `tabulate`, which is included as a dependency in `requirements.txt`. Be sure to install that before attempting to benchmark.
+| Curve            | Key gen (ms) | Sign (ms) | Verify (ms) |
+|------------------|--------------|-----------|-------------|
+| P-224            | 2            | 2.1       | 3.8         |
+| P-256            | 2.5          | 2.6       | 4.9         |
+| P-384            | 5            | 5.1       | 9.6         |
+| P-521            | 9.2          | 9.4       | 18.2        |
+| brainpoolP224r1  | 2.2          | 2.3       | 4.2         |
+| brainpoolP256r1  | 2.7          | 2.8       | 5.4         |
+| brainpoolP384r1  | 5.4          | 5.5       | 10.6        |
+| brainpoolP512r1  | 10.1         | 10.4      | 20.2        |
+| secp256k1        | 2.5          | 2.6       | 4.8         |
+
+See the top-level docstring in the `pyec/benchmark.py` module for more information on how to benchmark this library on your own machine. Note that results are formatted using `tabulate`, which is included as a dependency in `requirements.txt`. Be sure to install that before attempting to benchmark.
 ## Contributing
 
 Pull requests and issues are very much encouraged. Assuming you already have the repository cloned, follow these steps to set up a development environment:
@@ -130,7 +128,7 @@ Pull requests and issues are very much encouraged. Assuming you already have the
 5) Install the pre-commit hooks using `pre-commit install`
 
 
-Before submitting a pull request, please ensure that your commit passes all unit tests, linting, and type checks. Note that running `pytest` from the project's root directory will run all unit tests. Also be sure to modify/include unit tests when appropriate.
+Before submitting a pull request, please ensure that your commit passes all unit tests, linting, and type checks. Note that running `pytest` from the project's root directory will run all unit tests. Please modify/include unit tests when appropriate.
 
 ## License
 
