@@ -121,14 +121,14 @@ See the top-level docstring in the `pyec/benchmark.py` module for more informati
 
 Pull requests and issues are very much encouraged. Assuming you already have the repository cloned, follow these steps to set up a development environment:
 
-1) Navigate to the project's root directory
-2) Create a virtual environment: `python -m venv .env`
-3) Activate the virtual environment: `source .env/bin/activate`
-4) Install all required dependencies: `pip install -r requirements.txt`
-5) Install the pre-commit hooks using `pre-commit install`
+1) Install poetry (if not already installed): `curl -sSL https://install.python-poetry.org | python3 -`
+2) Navigate to the project's root directory
+2) Install dev dependencies: `poetry install`
+3) Activate the poetry shell: `poetry shell`
+4) Install the pre-commit hooks: `pre-commit install`
 
 
-Before submitting a pull request, please ensure that your commit passes all unit tests, linting, and type checks. Note that running `pytest` from the project's root directory will run all unit tests. Please modify/include unit tests when appropriate.
+Before submitting a pull request, please ensure that your commit passes all unit tests, linting, and type checks. Note that running `pytest` from the project's root directory within the poetry shell will run all unit tests. Please modify/include unit tests when appropriate.
 
 ## License
 

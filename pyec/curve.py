@@ -1,7 +1,7 @@
 import typing as t
 from abc import ABC, abstractmethod
 
-from pyec.maths import FiniteField, modular_inverse, to_binary, to_naf
+from pyec.maths import FiniteField, to_naf
 from pyec.point import AffinePoint, Infinity, JacobianPoint
 
 CurveElement = t.Union[AffinePoint, JacobianPoint, Infinity]
@@ -187,7 +187,6 @@ class Curve(ABC):
         if isinstance(P, Infinity):
             return P
         bits = to_naf(n, w)
-        Q: CurveElement = P.to_jacobian()
         R: CurveElement = self.infinity
 
         mults = {i: self._scalar_mult(P, i) for i in range(1, 2 ** (w - 1), 2)}
@@ -247,7 +246,7 @@ class Curve(ABC):
             ValueError: If the point (x, y) does not exist on the curve
         """
         point = AffinePoint(x, y, self.p)
-        if not point in self:
+        if point not in self:
             raise ValueError("The given point is not on the curve.")
         return point.to_jacobian()
 
