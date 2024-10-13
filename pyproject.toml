@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "py-ec"
+name = "pyelcurve"
 version = "0.1.0"
 description = "Elliptic curve arithmetic and digital signatures in Python."
 authors = ["Andrew Shannon"]
@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{ include = "pyec" }]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.9"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
