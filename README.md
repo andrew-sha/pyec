@@ -4,12 +4,18 @@
 use this ECDSA in production**. In applications where security is critical, refer instead to an industry-grade cryptography library.
 
 ## Installation
-This library is currently not available on PyPI. To install, clone the repository:
+The quickest to install the library is via PyPI. The destination environment must be Python 3.9 or greater:
+
+```bash
+pip install pyelcurve
+```
+
+Alternatively, clone the repository:
 ```bash
 git clone https://github.com/andrew-sha/pyec.git
 cd pyec/
 ```
-Once a copy of the repository exists locally, `pyec` can be imported within a Python script or interactive shell located at the root directory of the local repository. See the following section for more details.
+Once a copy of the repository exists locally, `pyec` can be imported within a Python script or interactive shell located at the root directory of the local repository.
 ## Usage
 ### Elliptic curve arithmetic
 
