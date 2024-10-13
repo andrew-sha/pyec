@@ -159,7 +159,7 @@ def modular_inverse(a: int, m: int) -> int:
         return bezout_coefs[1] % m
 
 
-def to_binary(n) -> t.List[int]:
+def to_binary(n: int) -> t.List[int]:
     """
     Returns the bit representation of a given integer
 
