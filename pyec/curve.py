@@ -125,43 +125,6 @@ class Curve(ABC):
         """
         ...
 
-    @t.overload
-    def scalar_mult(
-        self,
-        P: CurveElement,
-        n: int,
-        w: int,
-        to_affine: t.Literal[True],
-    ) -> AffinePoint:
-        ...
-
-    @t.overload
-    def scalar_mult(
-        self,
-        P: CurveElement,
-        n: int,
-        w: int,
-        to_affine: t.Literal[False],
-    ) -> JacobianPoint:
-        ...
-
-    @t.overload
-    def scalar_mult(
-        self,
-        P: CurveElement,
-        n: int,
-    ) -> AffinePoint:
-        ...
-
-    @t.overload
-    def scalar_mult(
-        self,
-        P: CurveElement,
-        n: int,
-        w: int,
-    ) -> AffinePoint:
-        ...
-
     def scalar_mult(
         self, P: CurveElement, n: int, w: int = 2, to_affine: bool = False
     ) -> CurveElement:
