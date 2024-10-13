@@ -5,6 +5,7 @@ description = "Elliptic curve arithmetic and digital signatures in Python."
 authors = ["Andrew Shannon"]
 license = "MIT"
 readme = "README.md"
+packages = [{ include = "pyec" }]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
