@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pyec"
+name = "py-ec"
 version = "0.1.0"
 description = "Elliptic curve arithmetic and digital signatures in Python."
 authors = ["Andrew Shannon"]
