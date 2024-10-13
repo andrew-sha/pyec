@@ -1,4 +1,3 @@
-import math
 import random
 import typing as t
 
@@ -153,10 +152,11 @@ def modular_inverse(a: int, m: int) -> int:
     Raises:
         ValueError: If the given value has no multiplicative inverse in the given modulus
     """
-    if not extended_euclidean(a, m)[0] == 1:
+    bezout_coefs = extended_euclidean(a, m)
+    if not bezout_coefs[0] == 1:
         raise ValueError(f"{a} has no multiplicative inverse modulo {m}.")
     else:
-        return extended_euclidean(a, m)[1] % m
+        return bezout_coefs[1] % m
 
 
 def to_binary(n: int) -> t.List[int]:

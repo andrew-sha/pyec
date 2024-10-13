@@ -104,19 +104,20 @@ To add a new curve, add a new key-value pair to `REGISTRY` in the `curve_params.
 `pyec` leverages several optimizations in order to speed up curve arithmetic. In particular, scalar multiplication is computed via the double-and-add algorithm on the w-ary non-adjacent form of the scalar so as to reduce the number of additions needed in computing the product. In turn, additions are computed on the Jacobian coordinate representation of a point, reducing the number of modular inversions needed.
 
 The following table displays the average length of time in milliseconds this library takes to generate key pairs, signatures, and verifications for each of the supported curves. Times are calculated as averages of 100 iterations of each operation on an Apple M3 Max.
-| Curve            | Key gen (ms) | Sign (ms) | Verify (ms) |
-|------------------|--------------|-----------|-------------|
-| P-224            | 2            | 2.1       | 3.8         |
-| P-256            | 2.5          | 2.6       | 4.9         |
-| P-384            | 5            | 5.1       | 9.6         |
-| P-521            | 9.2          | 9.4       | 18.2        |
-| brainpoolP224r1  | 2.2          | 2.3       | 4.2         |
-| brainpoolP256r1  | 2.7          | 2.8       | 5.4         |
-| brainpoolP384r1  | 5.4          | 5.5       | 10.6        |
-| brainpoolP512r1  | 10.1         | 10.4      | 20.2        |
-| secp256k1        | 2.5          | 2.6       | 4.8         |
+Curve              Key gen (ms)    Sign (ms)    Verify (ms)
+---------------  --------------  -----------  -------------
+P-224                       1.8          1.8            3.5
+P-256                       2.3          2.3            4.5
+P-384                       5.1          5.1           10.1
+P-521                       8.7          8.9           17.6
+brainpoolP224r1             1.9          2              3.8
+brainpoolP256r1             2.5          2.5            4.9
+brainpoolP384r1             5.5          5.5           10.8
+brainpoolP512r1             9.5          9.6           18.9
+secp256k1                   2.2          2.3            4.5
 
-See the top-level docstring in the `pyec/benchmark.py` module for more information on how to benchmark this library on your own machine. Note that results are formatted using `tabulate`, which is included as a dependency in `requirements.txt`. Be sure to install that before attempting to benchmark.
+
+See the top-level docstring in the `pyec/benchmark.py` module for more information on how to benchmark this library on your own machine. Note that results are formatted using `tabulate`, which is included as a dev dependency in the `pyproject.toml`.
 ## Contributing
 
 Pull requests and issues are very much encouraged. Assuming you already have the repository cloned, follow these steps to set up a development environment:
